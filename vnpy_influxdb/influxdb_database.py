@@ -108,6 +108,8 @@ class InfluxdbDatabase(BaseDatabase):
         f[key] = overview
         f.close()
 
+        return True
+
     def save_tick_data(self, ticks: List[TickData]) -> bool:
         """保存TICK数据"""
         json_body = []
@@ -171,6 +173,8 @@ class InfluxdbDatabase(BaseDatabase):
             json_body.append(d)
 
         self.client.write_points(json_body, batch_size=10000)
+
+        return True
 
     def load_bar_data(
         self,
