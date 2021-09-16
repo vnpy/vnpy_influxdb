@@ -117,6 +117,8 @@ class InfluxdbDatabase(BaseDatabase):
 
         for tick in ticks:
             tick.datetime = convert_tz(tick.datetime)
+            if tick.localtime is None:
+                tick.localtime = "Nan"
 
             d = {
                 "measurement": "tick_data",
@@ -241,7 +243,10 @@ class InfluxdbDatabase(BaseDatabase):
 
         ticks: List[TickData] = []
         for d in points:
-            dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%SZ")
+            try:
+                dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            except ValueError:
+                dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%SZ")
 
             tick = TickData(
                 symbol=symbol,
