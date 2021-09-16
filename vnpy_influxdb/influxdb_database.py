@@ -108,6 +108,8 @@ class InfluxdbDatabase(BaseDatabase):
         f[key] = overview
         f.close()
 
+        return True
+
     def save_tick_data(self, ticks: List[TickData]) -> bool:
         """保存TICK数据"""
         json_body = []
@@ -117,6 +119,8 @@ class InfluxdbDatabase(BaseDatabase):
 
         for tick in ticks:
             tick.datetime = convert_tz(tick.datetime)
+            if tick.localtime is None:
+                tick.localtime = "Nan"
 
             d = {
                 "measurement": "tick_data",
@@ -169,6 +173,8 @@ class InfluxdbDatabase(BaseDatabase):
             json_body.append(d)
 
         self.client.write_points(json_body, batch_size=10000)
+
+        return True
 
     def load_bar_data(
         self,
@@ -241,7 +247,10 @@ class InfluxdbDatabase(BaseDatabase):
 
         ticks: List[TickData] = []
         for d in points:
-            dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%SZ")
+            try:
+                dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            except ValueError:
+                dt = datetime.strptime(d["time"], "%Y-%m-%dT%H:%M:%SZ")
 
             tick = TickData(
                 symbol=symbol,
