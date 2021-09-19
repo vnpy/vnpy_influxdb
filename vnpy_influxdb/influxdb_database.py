@@ -5,12 +5,11 @@ import shelve
 from influxdb_client import (
     InfluxDBClient,
     WriteApi,
-    QueryApi
+    QueryApi,
+    DeleteApi
 )
-from influxdb_client.client.delete_api import DeleteApi
-from influxdb_client.client.write.dataframe_serializer import DataframeSerializer
 from influxdb_client.client.write_api import SYNCHRONOUS
-from pandas.core.frame import DataFrame
+from pandas import DataFrame
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData, TickData
@@ -26,9 +25,6 @@ from vnpy.trader.utility import (
     extract_vt_symbol,
     get_file_path
 )
-
-
-# SYNCHRONOUS.batch_size = 100
 
 
 class InfluxdbDatabase(BaseDatabase):
@@ -127,7 +123,7 @@ class InfluxdbDatabase(BaseDatabase):
                     |> count()
                     |> yield(name: "count")
             '''
-            df: DataframeSerializer = self.query_api.query_data_frame(query)
+            df: DataFrame = self.query_api.query_data_frame(query)
 
             for tp in df.itertuples():
                 overview.count = tp._5
@@ -346,7 +342,7 @@ class InfluxdbDatabase(BaseDatabase):
                 |> count()
                 |> yield(name: "count")
         '''
-        df: DataframeSerializer = self.query_api.query_data_frame(query1)
+        df: DataFrame = self.query_api.query_data_frame(query1)
 
         for tp in df.itertuples():
             count = tp._5
@@ -390,7 +386,7 @@ class InfluxdbDatabase(BaseDatabase):
                 |> count()
                 |> yield(name: "count")
         '''
-        df: DataframeSerializer = self.query_api.query_data_frame(query1)
+        df: DataFrame = self.query_api.query_data_frame(query1)
 
         count = 0
         for tp in df.itertuples():
