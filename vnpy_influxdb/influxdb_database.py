@@ -44,6 +44,7 @@ class InfluxdbDatabase(BaseDatabase):
         self.client: InfluxDBClient = InfluxDBClient(
             url=f"http://{self.host}:{self.port}",
             token=self.password,
+            timeout=36000000,
             org=self.user
         )
 
