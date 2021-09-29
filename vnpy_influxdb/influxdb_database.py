@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 import shelve
+import pandas as pd
 
 from influxdb_client import (
     InfluxDBClient,
@@ -228,24 +229,28 @@ class InfluxdbDatabase(BaseDatabase):
                 |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
         '''
 
-        df: DataFrame = self.query_api.query_data_frame(query)
+        result = self.query_api.query_raw(query)
+
+        df: pd.DataFrame = pd.read_csv(result)[3:]
+
+        df["date_time"] = pd.to_datetime(df["dateTime:RFC3339.2"])
 
         bars: List[BarData] = []
         for tp in df.itertuples():
-            dt = datetime.fromtimestamp(tp._5.timestamp(), tz=DB_TZ)
+            dt = datetime.fromtimestamp(tp[17].timestamp(), tz=DB_TZ)
 
             bar = BarData(
                 symbol=symbol,
                 exchange=exchange,
                 interval=interval,
                 datetime=dt,
-                open_price=tp.open_price,
-                high_price=tp.high_price,
-                low_price=tp.low_price,
-                close_price=tp.close_price,
-                volume=tp.volume,
-                turnover=tp.turnover,
-                open_interest=tp.open_interest,
+                open_price=tp[14],
+                high_price=tp[11],
+                low_price=tp[12],
+                close_price=tp[10],
+                volume=tp[16],
+                turnover=tp[15],
+                open_interest=tp[13],
                 gateway_name="DB"
             )
             bars.append(bar)
@@ -272,49 +277,53 @@ class InfluxdbDatabase(BaseDatabase):
                 |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
         '''
 
-        df: DataFrame = self.query_api.query_data_frame(query)
+        result = self.query_api.query_raw(query)
+
+        df: pd.DataFrame = pd.read_csv(result)[3:]
+
+        df["date_time"] = pd.to_datetime(df["dateTime:RFC3339.2"])
 
         ticks: List[TickData] = []
-        for tp in df.itertuples():
-            dt = datetime.fromtimestamp(tp._5.timestamp(), tz=DB_TZ)
+        for tp in df[3:].itertuples():
+            dt = datetime.fromtimestamp(tp[42].timestamp(), tz=DB_TZ)
 
             tick = TickData(
                 symbol=symbol,
                 exchange=exchange,
                 datetime=dt,
-                name=tp.name,
-                volume=tp.volume,
-                turnover=tp.turnover,
-                open_interest=tp.open_interest,
-                last_price=tp.last_price,
-                last_volume=tp.last_volume,
-                limit_up=tp.limit_up,
-                limit_down=tp.limit_down,
-                open_price=tp.open_price,
-                high_price=tp.high_price,
-                low_price=tp.low_price,
-                pre_close=tp.pre_close,
-                bid_price_1=tp.bid_price_1,
-                bid_price_2=tp.bid_price_2,
-                bid_price_3=tp.bid_price_3,
-                bid_price_4=tp.bid_price_4,
-                bid_price_5=tp.bid_price_5,
-                ask_price_1=tp.ask_price_1,
-                ask_price_2=tp.ask_price_2,
-                ask_price_3=tp.ask_price_3,
-                ask_price_4=tp.ask_price_4,
-                ask_price_5=tp.ask_price_5,
-                bid_volume_1=tp.bid_volume_1,
-                bid_volume_2=tp.bid_volume_2,
-                bid_volume_3=tp.bid_volume_3,
-                bid_volume_4=tp.bid_volume_4,
-                bid_volume_5=tp.bid_volume_5,
-                ask_volume_1=tp.ask_volume_1,
-                ask_volume_2=tp.ask_volume_2,
-                ask_volume_3=tp.ask_volume_3,
-                ask_volume_4=tp.ask_volume_4,
-                ask_volume_5=tp.ask_volume_5,
-                localtime=datetime.fromtimestamp(tp.localtime),
+                name=tp[36],
+                volume=tp[41],
+                turnover=tp[40],
+                open_interest=tp[37],
+                last_price=tp[30],
+                last_volume=tp[31],
+                limit_up=tp[33],
+                limit_down=tp[32],
+                open_price=tp[38],
+                high_price=tp[29],
+                low_price=tp[35],
+                pre_close=tp[39],
+                bid_price_1=tp[19],
+                bid_price_2=tp[20],
+                bid_price_3=tp[21],
+                bid_price_4=tp[22],
+                bid_price_5=tp[23],
+                ask_price_1=tp[9],
+                ask_price_2=tp[10],
+                ask_price_3=tp[11],
+                ask_price_4=tp[12],
+                ask_price_5=tp[13],
+                bid_volume_1=tp[24],
+                bid_volume_2=tp[25],
+                bid_volume_3=tp[26],
+                bid_volume_4=tp[27],
+                bid_volume_5=tp[28],
+                ask_volume_1=tp[14],
+                ask_volume_2=tp[15],
+                ask_volume_3=tp[16],
+                ask_volume_4=tp[17],
+                ask_volume_5=tp[18],
+                localtime=datetime.fromtimestamp(float(tp[34])),
                 gateway_name="DB"
             )
             ticks.append(tick)
@@ -343,8 +352,9 @@ class InfluxdbDatabase(BaseDatabase):
                 |> count()
                 |> yield(name: "count")
         '''
-        df: DataFrame = self.query_api.query_data_frame(query1)
 
+        df: DataFrame = self.query_api.query_data_frame(query1)
+        count = 0
         for tp in df.itertuples():
             count = tp._5
 
@@ -388,7 +398,6 @@ class InfluxdbDatabase(BaseDatabase):
                 |> yield(name: "count")
         '''
         df: DataFrame = self.query_api.query_data_frame(query1)
-
         count = 0
         for tp in df.itertuples():
             count = tp._5
