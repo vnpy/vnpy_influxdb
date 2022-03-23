@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 import shelve
+from shelve import DbfilenameShelf
 import pandas as pd
 
 from influxdb_client import (
@@ -31,8 +32,8 @@ from vnpy.trader.utility import (
 class InfluxdbDatabase(BaseDatabase):
     """InfluxDB数据库接口"""
 
-    overview_filename = "influxdb_overview"
-    overview_filepath = str(get_file_path(overview_filename))
+    overview_filename: str = "influxdb_overview"
+    overview_filepath: str = str(get_file_path(overview_filename))
 
     def __init__(self) -> None:
         """"""
@@ -68,7 +69,7 @@ class InfluxdbDatabase(BaseDatabase):
         for bar in bars:
             bar.datetime = convert_tz(bar.datetime)
 
-            d = {
+            d: dict = {
                 "measurement": "bar_data",
                 "tags": {
                     "vt_symbol": vt_symbol,
@@ -95,13 +96,13 @@ class InfluxdbDatabase(BaseDatabase):
 
         # 更新K线汇总数据
         symbol, exchange = extract_vt_symbol(vt_symbol)
-        key = f"{vt_symbol}_{interval.value}"
+        key: str = f"{vt_symbol}_{interval.value}"
 
-        f = shelve.open(self.overview_filepath)
-        overview = f.get(key, None)
+        f: DbfilenameShelf = shelve.open(self.overview_filepath)
+        overview: BarOverview = f.get(key, None)
 
         if not overview:
-            overview = BarOverview(
+            overview: BarOverview = BarOverview(
                 symbol=symbol,
                 exchange=exchange,
                 interval=interval
@@ -140,7 +141,7 @@ class InfluxdbDatabase(BaseDatabase):
         data: List[dict] = []
 
         # 读取主键参数
-        tick = ticks[0]
+        tick: TickData = ticks[0]
         vt_symbol: str = tick.vt_symbol
 
         for tick in ticks:
@@ -149,7 +150,7 @@ class InfluxdbDatabase(BaseDatabase):
             if not tick.localtime:
                 tick.localtime = tick.datetime
 
-            d = {
+            d: dict = {
                 "measurement": "tick_data",
                 "tags": {
                     "vt_symbol": vt_symbol
@@ -237,9 +238,9 @@ class InfluxdbDatabase(BaseDatabase):
 
         bars: List[BarData] = []
         for tp in df.itertuples():
-            dt = datetime.fromtimestamp(tp[17].timestamp(), tz=DB_TZ)
+            dt: datetime = datetime.fromtimestamp(tp[17].timestamp(), tz=DB_TZ)
 
-            bar = BarData(
+            bar: BarData = BarData(
                 symbol=symbol,
                 exchange=exchange,
                 interval=interval,
@@ -285,9 +286,9 @@ class InfluxdbDatabase(BaseDatabase):
 
         ticks: List[TickData] = []
         for tp in df[3:].itertuples():
-            dt = datetime.fromtimestamp(tp[42].timestamp(), tz=DB_TZ)
+            dt: datetime = datetime.fromtimestamp(tp[42].timestamp(), tz=DB_TZ)
 
-            tick = TickData(
+            tick: TickData = TickData(
                 symbol=symbol,
                 exchange=exchange,
                 datetime=dt,
@@ -354,7 +355,7 @@ class InfluxdbDatabase(BaseDatabase):
         '''
 
         df: DataFrame = self.query_api.query_data_frame(query1)
-        count = 0
+        count: int = 0
         for tp in df.itertuples():
             count = tp._5
 
@@ -368,9 +369,9 @@ class InfluxdbDatabase(BaseDatabase):
         )
 
         # 删除K线汇总数据
-        f = shelve.open(self.overview_filepath)
-        vt_symbol = generate_vt_symbol(symbol, exchange)
-        key = f"{vt_symbol}_{interval.value}"
+        f: DbfilenameShelf = shelve.open(self.overview_filepath)
+        vt_symbol: str = generate_vt_symbol(symbol, exchange)
+        key: str = f"{vt_symbol}_{interval.value}"
         if key in f:
             f.pop(key)
         f.close()
@@ -398,7 +399,7 @@ class InfluxdbDatabase(BaseDatabase):
                 |> yield(name: "count")
         '''
         df: DataFrame = self.query_api.query_data_frame(query1)
-        count = 0
+        count: int = 0
         for tp in df.itertuples():
             count = tp._5
 
@@ -415,7 +416,7 @@ class InfluxdbDatabase(BaseDatabase):
 
     def get_bar_overview(self) -> List[BarOverview]:
         """查询数据库中的K线汇总信息"""
-        f = shelve.open(self.overview_filepath)
-        overviews = list(f.values())
+        f: DbfilenameShelf = shelve.open(self.overview_filepath)
+        overviews: List[BarOverview] = list(f.values())
         f.close()
         return overviews
