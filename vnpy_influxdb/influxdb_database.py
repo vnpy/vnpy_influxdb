@@ -102,7 +102,7 @@ class InfluxdbDatabase(BaseDatabase):
         overview: BarOverview = f.get(key, None)
 
         if not overview:
-            overview: BarOverview = BarOverview(
+            overview = BarOverview(
                 symbol=symbol,
                 exchange=exchange,
                 interval=interval
