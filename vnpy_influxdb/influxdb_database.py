@@ -59,7 +59,7 @@ class InfluxdbDatabase(BaseDatabase):
         self.query_api: QueryApi = self.client.query_api()
         self.delete_api: DeleteApi = self.client.delete_api()
 
-    def save_bar_data(self, bars: List[BarData]) -> bool:
+    def save_bar_data(self, bars: List[BarData], stream: bool = False) -> bool:
         """保存K线数据"""
         data: List[dict] = []
 
@@ -113,6 +113,9 @@ class InfluxdbDatabase(BaseDatabase):
             overview.count = len(bars)
             overview.start = bars[0].datetime
             overview.end = bars[-1].datetime
+        elif stream:
+            overview.end = bars[-1].datetime
+            overview.count += len(bars)
         else:
             overview.start = min(overview.start, bars[0].datetime)
             overview.end = max(overview.end, bars[-1].datetime)
@@ -139,7 +142,7 @@ class InfluxdbDatabase(BaseDatabase):
 
         return True
 
-    def save_tick_data(self, ticks: List[TickData]) -> bool:
+    def save_tick_data(self, ticks: List[TickData], stream: bool = False) -> bool:
         """保存TICK数据"""
         data: List[dict] = []
 
@@ -224,6 +227,9 @@ class InfluxdbDatabase(BaseDatabase):
             overview.count = len(ticks)
             overview.start = ticks[0].datetime
             overview.end = ticks[-1].datetime
+        elif stream:
+            overview.end = ticks[-1].datetime
+            overview.count += len(ticks)
         else:
             overview.start = min(overview.start, ticks[0].datetime)
             overview.end = max(overview.end, ticks[-1].datetime)
