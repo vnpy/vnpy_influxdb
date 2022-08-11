@@ -17,6 +17,7 @@ from vnpy.trader.object import BarData, TickData
 from vnpy.trader.database import (
     BaseDatabase,
     BarOverview,
+    TickOverview,
     DB_TZ,
     convert_tz
 )
@@ -31,8 +32,11 @@ from vnpy.trader.utility import (
 class InfluxdbDatabase(BaseDatabase):
     """InfluxDB数据库接口"""
 
-    overview_filename = "influxdb_overview"
-    overview_filepath = str(get_file_path(overview_filename))
+    bar_overview_filename = "influxdb_baroverview"
+    bar_overview_filepath = str(get_file_path(bar_overview_filename))
+
+    tick_overview_filename = "influxdb_tickoverview"
+    tick_overview_filepath = str(get_file_path(tick_overview_filename))
 
     def __init__(self) -> None:
         """"""
@@ -55,7 +59,7 @@ class InfluxdbDatabase(BaseDatabase):
         self.query_api: QueryApi = self.client.query_api()
         self.delete_api: DeleteApi = self.client.delete_api()
 
-    def save_bar_data(self, bars: List[BarData]) -> bool:
+    def save_bar_data(self, bars: List[BarData], stream: bool = False) -> bool:
         """保存K线数据"""
         data: List[dict] = []
 
@@ -97,7 +101,7 @@ class InfluxdbDatabase(BaseDatabase):
         symbol, exchange = extract_vt_symbol(vt_symbol)
         key = f"{vt_symbol}_{interval.value}"
 
-        f = shelve.open(self.overview_filepath)
+        f = shelve.open(self.bar_overview_filepath)
         overview = f.get(key, None)
 
         if not overview:
@@ -109,6 +113,9 @@ class InfluxdbDatabase(BaseDatabase):
             overview.count = len(bars)
             overview.start = bars[0].datetime
             overview.end = bars[-1].datetime
+        elif stream:
+            overview.end = bars[-1].datetime
+            overview.count += len(bars)
         else:
             overview.start = min(overview.start, bars[0].datetime)
             overview.end = max(overview.end, bars[-1].datetime)
@@ -135,7 +142,7 @@ class InfluxdbDatabase(BaseDatabase):
 
         return True
 
-    def save_tick_data(self, ticks: List[TickData]) -> bool:
+    def save_tick_data(self, ticks: List[TickData], stream: bool = False) -> bool:
         """保存TICK数据"""
         data: List[dict] = []
 
@@ -204,6 +211,47 @@ class InfluxdbDatabase(BaseDatabase):
             org=self.user,
             record=data
         )
+
+        # 更新Tick汇总数据
+        symbol, exchange = extract_vt_symbol(vt_symbol)
+        key = f"{vt_symbol}"
+
+        f = shelve.open(self.tick_overview_filepath)
+        overview = f.get(key, None)
+
+        if not overview:
+            overview = TickOverview(
+                symbol=symbol,
+                exchange=exchange
+            )
+            overview.count = len(ticks)
+            overview.start = ticks[0].datetime
+            overview.end = ticks[-1].datetime
+        elif stream:
+            overview.end = ticks[-1].datetime
+            overview.count += len(ticks)
+        else:
+            overview.start = min(overview.start, ticks[0].datetime)
+            overview.end = max(overview.end, ticks[-1].datetime)
+
+            query: str = f'''
+                from(bucket: "{self.database}")
+                    |> range(start: 2000-01-01T00:00:00Z, stop: {datetime.now().isoformat()}Z)
+                    |> filter(fn: (r) =>
+                        r._measurement == "tick_data" and
+                        r.vt_symbol == "{vt_symbol}" and
+                        r._field == "close_price"
+                    )
+                    |> count()
+                    |> yield(name: "count")
+            '''
+            df: DataFrame = self.query_api.query_data_frame(query)
+
+            for tp in df.itertuples():
+                overview.count = tp._5
+
+        f[key] = overview
+        f.close()
 
         return True
 
@@ -368,7 +416,7 @@ class InfluxdbDatabase(BaseDatabase):
         )
 
         # 删除K线汇总数据
-        f = shelve.open(self.overview_filepath)
+        f = shelve.open(self.bar_overview_filepath)
         vt_symbol = generate_vt_symbol(symbol, exchange)
         key = f"{vt_symbol}_{interval.value}"
         if key in f:
@@ -411,11 +459,26 @@ class InfluxdbDatabase(BaseDatabase):
             org=self.user
         )
 
+        # 删除K线汇总数据
+        f = shelve.open(self.tick_overview_filepath)
+        vt_symbol = generate_vt_symbol(symbol, exchange)
+        key = f"{vt_symbol}"
+        if key in f:
+            f.pop(key)
+        f.close()
+
         return count
 
     def get_bar_overview(self) -> List[BarOverview]:
         """查询数据库中的K线汇总信息"""
-        f = shelve.open(self.overview_filepath)
+        f = shelve.open(self.bar_overview_filepath)
+        overviews = list(f.values())
+        f.close()
+        return overviews
+
+    def get_tick_overview(self) -> List[TickOverview]:
+        """查询数据库中的Tick汇总信息"""
+        f = shelve.open(self.tick_overview_filepath)
         overviews = list(f.values())
         f.close()
         return overviews
