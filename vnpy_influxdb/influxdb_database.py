@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 import shelve
+import warnings
 import pandas as pd
 
 from influxdb_client import (
@@ -10,6 +11,7 @@ from influxdb_client import (
     DeleteApi
 )
 from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.client.warnings import MissingPivotFunction
 from pandas import DataFrame
 
 from vnpy.trader.constant import Exchange, Interval
@@ -27,6 +29,9 @@ from vnpy.trader.utility import (
     extract_vt_symbol,
     get_file_path
 )
+
+
+warnings.simplefilter("ignore", MissingPivotFunction)
 
 
 class InfluxdbDatabase(BaseDatabase):
