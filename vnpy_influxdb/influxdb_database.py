@@ -284,7 +284,10 @@ class InfluxdbDatabase(BaseDatabase):
 
         result = self.query_api.query_raw(query)
 
-        df: pd.DataFrame = pd.read_csv(result)[3:]
+        try:
+            df: pd.DataFrame = pd.read_csv(result)[3:]
+        except pd.errors.EmptyDataError:
+            return []
 
         df["date_time"] = pd.to_datetime(df["dateTime:RFC3339.2"])
 
