@@ -23,6 +23,6 @@
 |database.name|名称|是|influxdb|
 |database.host|地址|是|localhost|
 |database.port|端口|是|8086|
-|database.database|实例|是|vnpy|
-|database.user|用户名|是|root|
-|database.password|密码|是|12345678|
+|database.database|Bucket|是|vnpy|
+|database.user|Organization|是|root|
+|database.password|API Token|是|12345678|
